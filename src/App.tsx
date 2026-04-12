@@ -52,6 +52,16 @@ function App() {
     setIsLoggedIn(true);
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+  };
+
+  const handleGenerateNewName = () => {
+    const newCodename = generateCodename();
+    localStorage.setItem("codename", newCodename);
+    setCodename(newCodename);
+  };
+
   return (
     <div className="app">
       <div className="card">
@@ -67,6 +77,13 @@ function App() {
             <p>Olet kirjautunut sisään.</p>
             <h2>Koodinimesi on:</h2>
             <div className="codename">{codename}</div>
+
+            <div className="button-group">
+              <button onClick={handleGenerateNewName}>Generoi uusi nimi</button>
+              <button onClick={handleLogout} className="secondary-button">
+                Kirjaudu ulos
+              </button>
+            </div>
           </>
         )}
       </div>
