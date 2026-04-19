@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import type { User } from "firebase/auth";
+import LoginForm from "./LoginForm";
+import { auth, logout } from "./authService";
 import "./App.css";
 
 function generateCodename(): string {
@@ -36,55 +40,49 @@ function generateCodename(): string {
   return `${randomAdjective}${randomAnimal}${randomNumber}`;
 }
 
+function getOrCreateCodename(uid: string): string {
+  const storageKey = `codename_${uid}`;
+  const existingCodename = localStorage.getItem(storageKey);
+
+  if (existingCodename) {
+    return existingCodename;
+  }
+
+  const newCodename = generateCodename();
+  localStorage.setItem(storageKey, newCodename);
+  return newCodename;
+}
+
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [codename, setCodename] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [codename, setCodename] = useState<string>("");
 
-  const handleLogin = () => {
-    let savedCodename = localStorage.getItem("codename");
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
 
-    if (!savedCodename) {
-      savedCodename = generateCodename();
-      localStorage.setItem("codename", savedCodename);
-    }
+      if (firebaseUser) {
+        const name = getOrCreateCodename(firebaseUser.uid);
+        setCodename(name);
+      } else {
+        setCodename("");
+      }
+    });
 
-    setCodename(savedCodename);
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-  };
-
-  const handleGenerateNewName = () => {
-    const newCodename = generateCodename();
-    localStorage.setItem("codename", newCodename);
-    setCodename(newCodename);
-  };
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="app">
       <div className="card">
-        <h1>Koodinimisovellus</h1>
-
-        {!isLoggedIn ? (
+        {user ? (
           <>
-            <p>Paina nappia kirjautuaksesi sisään.</p>
-            <button onClick={handleLogin}>Kirjaudu sisään</button>
+            <h1>Tervetuloa, {codename}</h1>
+            <p>Kirjautunut käyttäjä: {user.email}</p>
+            <button onClick={logout}>Kirjaudu ulos</button>
           </>
         ) : (
-          <>
-            <p>Olet kirjautunut sisään.</p>
-            <h2>Koodinimesi on:</h2>
-            <div className="codename">{codename}</div>
-
-            <div className="button-group">
-              <button onClick={handleGenerateNewName}>Generoi uusi nimi</button>
-              <button onClick={handleLogout} className="secondary-button">
-                Kirjaudu ulos
-              </button>
-            </div>
-          </>
+          <LoginForm />
         )}
       </div>
     </div>
