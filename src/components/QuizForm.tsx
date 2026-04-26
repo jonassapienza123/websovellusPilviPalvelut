@@ -12,7 +12,6 @@ interface QuizFormProps {
 
 export function QuizForm({
   players,
-  currentUserId,
   productName,
   correctPrice,
   onSubmitGuess,
