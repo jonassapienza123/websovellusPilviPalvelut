@@ -5,6 +5,7 @@ import {
   getDoc,
   onSnapshot,
   updateDoc,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Session } from "./types/Session";
@@ -17,13 +18,12 @@ type CreateSessionInput = {
   creatorName: string;
 };
 
-export async function createSession({
-  name,
-  creatorUid,
-  creatorName,
-}: CreateSessionInput): Promise<Session> {
-  const product = await fetchRandomProduct();
-
+function createSessionData(
+  name: string,
+  creatorUid: string,
+  creatorName: string,
+  product: Awaited<ReturnType<typeof fetchRandomProduct>>
+) {
   const creator: Player = {
     uid: creatorUid,
     codename: creatorName,
@@ -31,7 +31,7 @@ export async function createSession({
     guess: null,
   };
 
-  const sessionData = {
+  return {
     sessionName: name,
     status: "waiting",
     players: [creator],
@@ -42,11 +42,37 @@ export async function createSession({
     createdAt: Date.now(),
     createdBy: creatorUid,
   };
+}
+
+export async function createSession({
+  name,
+  creatorUid,
+  creatorName,
+}: CreateSessionInput): Promise<Session> {
+  const product = await fetchRandomProduct();
+  const sessionData = createSessionData(name, creatorUid, creatorName, product);
 
   const docRef = await addDoc(collection(db, "sessions"), sessionData);
 
   return {
     id: docRef.id,
+    ...sessionData,
+  } as Session;
+}
+
+export async function createSessionWithId({
+  id,
+  name,
+  creatorUid,
+  creatorName,
+}: CreateSessionInput & { id: string }): Promise<Session> {
+  const product = await fetchRandomProduct();
+  const sessionData = createSessionData(name, creatorUid, creatorName, product);
+
+  await setDoc(doc(db, "sessions", id), sessionData);
+
+  return {
+    id,
     ...sessionData,
   } as Session;
 }
@@ -91,6 +117,10 @@ export async function joinSession(
   const alreadyJoined = session.players.some((p) => p.uid === player.uid);
 
   if (alreadyJoined) {
+    return;
+  }
+
+  if (session.players.length >= 4) {
     return;
   }
 

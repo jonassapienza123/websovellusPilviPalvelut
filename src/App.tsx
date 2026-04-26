@@ -6,10 +6,16 @@ import { auth } from "./firebase";
 import { logout } from "./authService";
 import "./App.css";
 import { QuizForm } from "./components/QuizForm";
-import { createSession, listenToSession } from "./gameSessionService";
+import {
+  createSessionWithId,
+  getSession,
+  joinSession,
+  listenToSession,
+} from "./gameSessionService";
 import { submitGuess as submitGuessToGame } from "./gameController";
 import type { Session } from "./types/Session";
-import { joinSession } from "./gameSessionService";
+
+const SESSION_ID = "demo-session";
 
 function generateCodename(): string {
   const adjectives = [
@@ -69,63 +75,50 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
-      if (firebaseUser) {
-        const name = getOrCreateCodename(firebaseUser.uid);
-        setCodename(name);
-
-      // 🔥 Hardkoodattu session ID (kaikki liittyvät samaan peliin)
-const SESSION_ID = "demo-session";
-
-// yritetään hakea olemassa oleva session
-let existingSession = null;
-
-try {
-  const { getSession } = await import("./gameSessionService");
-  existingSession = await getSession(SESSION_ID);
-} catch {}
-
-if (!existingSession) {
-  const newSession = await createSession({
-    name: "Yhteinen peli",
-    creatorUid: firebaseUser.uid,
-    creatorName: name,
-  });
-
-  setSession(newSession);
-  setSessionId(newSession.id);
-} else {
-  setSession(existingSession);
-  setSessionId(existingSession.id);
-}
-
-// liity peliin
-await joinSession(
-  existingSession ?? session!,
-  {
-    uid: firebaseUser.uid,
-    codename: name,
-    score: 0,
-    guess: null,
-  }
-);
-      } else {
+      if (!firebaseUser) {
         setCodename("");
         setSession(null);
+        setSessionId(null);
+        return;
       }
+
+      const name = getOrCreateCodename(firebaseUser.uid);
+      setCodename(name);
+
+      let activeSession = await getSession(SESSION_ID);
+
+      if (!activeSession) {
+        activeSession = await createSessionWithId({
+          id: SESSION_ID,
+          name: "Yhteinen peli",
+          creatorUid: firebaseUser.uid,
+          creatorName: name,
+        });
+      }
+
+      await joinSession(activeSession, {
+        uid: firebaseUser.uid,
+        codename: name,
+        score: 0,
+        guess: null,
+      });
+
+      setSession(activeSession);
+      setSessionId(activeSession.id);
     });
 
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-  if (!sessionId) return;
+    if (!sessionId) return;
 
-  const unsubscribe = listenToSession(sessionId, (updatedSession) => {
-    setSession(updatedSession);
-  });
+    const unsubscribe = listenToSession(sessionId, (updatedSession) => {
+      setSession(updatedSession);
+    });
 
-  return () => unsubscribe();
-}, [sessionId]);
+    return () => unsubscribe();
+  }, [sessionId]);
 
   async function submitGuess(guess: number) {
     if (!session || !user) return;
@@ -144,22 +137,31 @@ await joinSession(
           <>
             <h1>Tervetuloa, {codename}</h1>
             <p>Kirjautunut käyttäjä: {user.email}</p>
+            <p>Pelin tila: {session?.status ?? "ladataan"}</p>
             <button onClick={logout}>Kirjaudu ulos</button>
 
             <hr />
 
             {session ? (
-              <QuizForm
-                onSubmitGuess={submitGuess}
-                players={session.players}
-                currentUserId={user.uid}
-                productName={session.product?.title}
-                correctPrice={
-                  session.status === "finished"
-                    ? session.correctPrice ?? undefined
-                    : undefined
-                }
-              />
+              <>
+                <p>Pelaajia: {session.players.length} / 4</p>
+
+                {session.status === "waiting" && (
+                  <p>Odotetaan vähintään kahta pelaajaa...</p>
+                )}
+
+                <QuizForm
+                  onSubmitGuess={submitGuess}
+                  players={session.players}
+                  currentUserId={user.uid}
+                  productName={session.product?.title}
+                  correctPrice={
+                    session.status === "finished"
+                      ? session.correctPrice ?? undefined
+                      : undefined
+                  }
+                />
+              </>
             ) : (
               <p>Luodaan pelisessiota...</p>
             )}
