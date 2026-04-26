@@ -36,12 +36,14 @@ export function QuizForm({
         }}
       >
         <input
-          type="number"
-          value={guess}
-          onChange={(e) => setGuess(e.target.value)}
-          placeholder="Arvaa hinta (€)"
-          required
-        />
+            type="number"
+            step="0.01"
+            min="0"
+            value={guess}
+            onChange={(e) => setGuess(e.target.value)}
+            placeholder="Arvaa hinta (€)"
+            required
+/>
 
         <button>Arvaa hinta</button>
       </form>
