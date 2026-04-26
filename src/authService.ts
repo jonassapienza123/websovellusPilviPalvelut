@@ -1,15 +1,10 @@
 import {
-  getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import type { User, UserCredential } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-import firebaseConfig from "../firebaseConfig";
-
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+import { auth } from "./firebase";
 
 export const loginWithEmail = async (
   email: string,
