@@ -6,6 +6,8 @@ import { auth } from "./firebase";
 import { logout } from "./authService";
 import "./App.css";
 import { QuizForm } from "./components/QuizForm";
+import CloudflareAnalytics from "./components/CloudflareAnalytics";
+import ConsentBanner from "./components/ConsentBanner";
 import {
   createSessionWithId,
   getSession,
@@ -170,6 +172,8 @@ function App() {
           <LoginForm />
         )}
       </div>
+      <CloudflareAnalytics />
+      <ConsentBanner />
     </div>
   );
 }

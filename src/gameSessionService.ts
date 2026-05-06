@@ -148,5 +148,5 @@ export async function updateSession(session: Session): Promise<void> {
     winner: session.winner,
     createdAt: session.createdAt,
     createdBy: session.createdBy,
-  });
+ });
 }
